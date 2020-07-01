@@ -40,6 +40,10 @@ image:
     repository: siim/logalert-exporter
     tag: v0.1.1
     pullPolicy: IfNotPresent
+  elasticsearchTemplates: 
+    repository: docker.io/openstackhelm/heat
+    tag: newton
+    pullPolicy: IfNotPresent
 ##
 global:
   rbac:
@@ -302,12 +306,14 @@ fluentbit:
     ## Default rulset to send exporter
     ## format is "level: keyword"   for example "critical: error"
     ## VERY VERY VERY IMPORTANT ==> At least one tuple should be defined
+
   
   targetLogs:
   - name: dockerlog
     tag: kube.*
     path: /var/log/containers/*.log
     type: fluent
+    indexPrefix: container
     parser: docker
     memBufLimit: 20MB
     bufferChunkSize: 2M

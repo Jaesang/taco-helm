@@ -1,0 +1,71 @@
+{{- if .Values.customResource.esTemplate.enabled }}
+{{- $envAll := . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "elasticsearch-operator.name" . }}-es-template
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "3"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    app: {{ template "elasticsearch-operator.name" . }}-operator
+{{ include "elasticsearch-operator.labels" . | indent 4 }}
+spec:
+  template:
+    metadata:
+      name: {{ template "elasticsearch-operator.name" . }}-es-template
+      labels:
+        app: {{ template "elasticsearch-operator.name" . }}-operator
+{{ include "elasticsearch-operator.labels" . | indent 8 }}
+    spec:
+      containers:
+      - name: template
+        image: "{{ .Values.image.elasticsearchTemplates.repository }}:{{ .Values.image.elasticsearchTemplates.tag }}"
+        imagePullPolicy: "{{ .Values.image.elasticsearchTemplates.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - /tmp/create_template.sh
+        volumeMounts:
+        - name: {{ template "elasticsearch-operator.name" . }}-cr-bin
+          mountPath: /tmp/create_template.sh
+          subPath: create_template.sh
+          readOnly: true
+        - name: {{ template "elasticsearch-operator.name" . }}-cr-bin
+          mountPath: /tmp/create_template2.sh
+          subPath: create_template2.sh
+          readOnly: true
+        # - name: elasticsearch-ca
+        #   mountPath: /etc/ssl/certs/ca-certificates.crt 
+        #   subPath: ca.crt
+        #   readOnly: true
+        {{ range $template, $fields := .Values.customResource.esTemplate.templates }}
+        - name: {{ template "elasticsearch-operator.name" $envAll }}-cr-etc
+          mountPath: /tmp/{{$template}}.json
+          subPath: {{$template}}.json
+          readOnly: true
+        {{ end }}
+        {{ range $ilm, $fields := .Values.customResource.esTemplate.ilms }}
+        - name: {{ template "elasticsearch-operator.name" $envAll }}-cr-etc
+          mountPath: /tmp/{{$ilm}}.json
+          subPath: {{$ilm}}.json
+          readOnly: true
+        {{ end }}
+      volumes:
+      - name: {{ template "elasticsearch-operator.name" . }}-cr-bin
+        configMap:
+          name: {{ template "elasticsearch-operator.name" . }}-cr-bin
+          defaultMode: 365
+      - name: {{ template "elasticsearch-operator.name" . }}-cr-etc
+        secret:
+          secretName: {{ template "elasticsearch-operator.name" . }}-cr-etc
+          defaultMode: 292
+      # - name: elasticsearch-ca
+      #   secret:
+      #     secretName: taco-elasticsearch-es-http-ca-internal
+      #     defaultMode: 292
+      restartPolicy: OnFailure
+{{- end }}

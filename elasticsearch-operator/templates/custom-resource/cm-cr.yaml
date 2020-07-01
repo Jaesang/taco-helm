@@ -1,0 +1,73 @@
+{{- if .Values.customResource.esTemplate.enabled }}
+{{- $envAll := . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "elasticsearch-operator.name" . }}-cr-bin
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: {{ template "elasticsearch-operator.name" . }}-operator
+{{ include "elasticsearch-operator.labels" . | indent 4 }}
+data:
+  create_template.sh: |-
+    #!/bin/sh
+    set -ev
+    ES_HOST={{ .Values.customResource.esTemplate.host }}
+    ES_PORT={{ .Values.customResource.esTemplate.port }}
+    ES_USER={{ .Values.customResource.esTemplate.username }}
+    ES_PW={{ .Values.customResource.esTemplate.password }}
+
+    /bin/sleep 1000
+{{ range $ilm, $fields := .Values.customResource.esTemplate.ilms }}
+    result=$(curl -k -K- <<< "--user " ${ES_USER}:${ES_PW}     -XPUT "https://${ES_HOST}:${ES_PORT}/_ilm/policy/{{$ilm}}"     -H 'Content-Type: application/json' -d @/tmp/{{$ilm}}.json     | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged'])")
+    if [ "$result" == "True" ]; then
+      echo "{{$ilm}} ilm created!"
+    else
+      echo "{{$ilm}} ilm not created!"
+    fi
+{{- end}}
+{{ range $template, $fields := .Values.customResource.esTemplate.templates }}
+    result=$(curl -k -K- <<< "--user " ${ES_USER}:${ES_PW}     -XPUT "https://${ES_HOST}:${ES_PORT}/_template/{{$template}}"     -H 'Content-Type: application/json' -d @/tmp/{{$template}}.json     | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged'])")
+    if [ "$result" == "True" ]; then
+      echo "{{$template}} template created!"
+    else
+      echo "{{$template}} template not created!"
+    fi
+{{- end}}
+  create_template2.sh: |-
+    #!/bin/sh
+    set -ev
+    hostname=XXX
+    port=443
+    trust_cert_file_location=`curl-config --ca`
+
+    sudo bash -c "echo -n | openssl s_client -showcerts -connect $hostname:$port -servername $hostname \
+        2>/dev/null  | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'  \
+        >> $trust_cert_file_location"
+
+
+    ES_HOST={{ .Values.customResource.esTemplate.host }}
+    ES_PORT={{ .Values.customResource.esTemplate.port }}
+    ES_USER={{ .Values.customResource.esTemplate.username }}
+    ES_PW={{ .Values.customResource.esTemplate.password }}
+
+{{ range $ilm, $fields := .Values.customResource.esTemplate.ilms }}
+    echo curl -K- "--user " $ES_USER:$ES_PW     -XPUT "https://$ES_HOST:$ES_PORT/_ilm/policy/{{$ilm}}"     -H 'Content-Type: application/json' -d @/tmp/{{$ilm}}.json 
+
+    result=$(curl -k -K- <<< "--user " $ES_USER:$ES_PW     -XPUT "https://$ES_HOST:$ES_PORT/_ilm/policy/{{$ilm}}"     -H 'Content-Type: application/json' -d @/tmp/{{$ilm}}.json     | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged'])")
+    if [ "$result" == "True" ]; then
+      echo "{{$ilm}} ilm created!"
+    else
+      echo "{{$ilm}} ilm not created!"
+    fi
+{{- end}}
+{{ range $template, $fields := .Values.customResource.esTemplate.templates }}
+    result=$(curl -k -K- <<< "--user " $ES_USER:$ES_PW     -XPUT "https://$ES_HOST:$ES_PORT/_template/{{$template}}"     -H 'Content-Type: application/json' -d @/tmp/{{$template}}.json     | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged'])")
+    if [ "$result" == "True" ]; then
+      echo "{{$template}} template created!"
+    else
+      echo "{{$template}} template not created!"
+    fi
+{{- end}}
+{{- end}}
