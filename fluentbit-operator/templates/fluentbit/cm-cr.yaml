@@ -1,4 +1,4 @@
-{{- if .Values.fluentbitOperator.esTemplate.enabled }}
+{{- if .Values.fluentbit.esTemplate.enabled }}
 {{- $envAll := . }}
 ---
 apiVersion: v1
@@ -14,7 +14,7 @@ data:
     #!/bin/sh
     set -ev
 
-{{ range $ilm, $fields := .Values.fluentbitOperator.esTemplate.ilms }}
+{{ range $ilm, $fields := .Values.fluentbit.esTemplate.ilms }}
     echo "trying to setting policy {{$ilm}}..."
 
     result=$(curl -k -u ${ES_USER}:${ES_PW} \
@@ -28,7 +28,7 @@ data:
       echo "{{$ilm}} ilm not created!"
     fi
 {{- end}}
-{{ range $template, $fields := .Values.fluentbitOperator.esTemplate.templates }}
+{{ range $template, $fields := .Values.fluentbit.esTemplate.templates }}
 
     echo "trying to setting Template {{$template}}..."
     result=$(curl -k -u ${ES_USER}:${ES_PW} \
