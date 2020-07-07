@@ -21,7 +21,7 @@ spec:
 {{ include "fluentbit-operator.labels" . | indent 8 }}
     spec:
     {{- if .Values.global.rbac.create }}
-      serviceAccountName: fluentbit
+      serviceAccountName: {{ template "fluentbit-operator.operator.serviceAccountName" . }}
     {{- end }}
       containers:
         - name: kubectl

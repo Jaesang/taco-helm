@@ -4,7 +4,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "fluentbit-operator.name" . }}-cr-bin
+  name: {{ template "fluentbit-operator.name" . }}-cr-cm
   namespace: {{ $.Release.Namespace }}
   labels:
     app: {{ template "fluentbit-operator.name" . }}-operator
@@ -14,32 +14,81 @@ data:
     #!/bin/sh
     set -ev
 
-{{ range $ilm, $fields := .Values.fluentbit.esTemplate.ilms }}
-    echo "trying to setting policy {{$ilm}}..."
+{{ range .Values.fluentbit.esTemplate.ilms }}
+    echo "trying to setting policy {{.name}}..."
+    curl -k -u ${ES_USER}:${ES_PW} \
+    -X PUT "${ES_URL}/_ilm/policy/{{.name}}" \
+    -H 'Content-Type:application/json' -H 'kbn-xsrf:true' -d @/tmp/ilm-{{.name}}.json     \
 
-    result=$(curl -k -u ${ES_USER}:${ES_PW} \
-    -X PUT "${ES_URL}/_ilm/policy/{{$ilm}}"     \
-    -H 'Content-Type: application/json' -H 'kbn-xsrf: true' -d @/tmp/{{$ilm}}.json     \
-    | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged']);" )
+    # | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged']);" )
 
-    if [ "$result" == "True" ]; then
-      echo "{{$ilm}} ilm created!"
-    else
-      echo "{{$ilm}} ilm not created!"
-    fi
+    # echo $result
+
+    # if [ "$result" == "True" ]; then
+    #   echo "{{.name}} ilm created!"
+    # else
+    #   echo "{{.name}} ilm not created!"
+    # fi
 {{- end}}
-{{ range $template, $fields := .Values.fluentbit.esTemplate.templates }}
-
-    echo "trying to setting Template {{$template}}..."
-    result=$(curl -k -u ${ES_USER}:${ES_PW} \
-    -X PUT "${ES_URL}/_template/{{$template}}"     \
-    -H 'Content-Type: application/json' -H 'kbn-xsrf: true' -d @/tmp/{{$template}}.json     \
-    | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged']);")
+{{ range .Values.fluentbit.esTemplate.templates }}
+    echo "trying to setting Template {{.name}}..."
     
-    if [ "$result" == "True" ]; then
-      echo "{{$template}} template created!"
-    else
-      echo "{{$template}} template not created!"
-    fi
+    curl -k -u ${ES_USER}:${ES_PW} \
+    -X PUT "${ES_URL}/_template/{{.name}}"     \
+    -H 'Content-Type:application/json' -H 'kbn-xsrf:true' -d @/tmp/template-{{.name}}.json     \
+
+    # | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged']);")
+
+    # echo $result
+
+    # if [ "$result" == "True" ]; then
+    #   echo "{{.name}} template created!"
+    # else
+    #   echo "{{.name}} template not created!"
+    # fi
 {{- end}}
+# {{ range .Values.fluentbit.targetLogs }}
+# {{ if .index}}
+#     echo "trying to create index {{.index.name}}..."
+#     curl -k -u ${ES_USER}:${ES_PW} \
+#     -X PUT "${ES_URL}/{{ .index.name }}"     \
+#     -H 'Content-Type:application/json' -H 'kbn-xsrf:true' -d @/tmp/index-{{ .index.name}}.json     \
+
+#     # | python -c "import sys, json; print(json.load(sys.stdin)['acknowledged']);")
+    
+#     # echo $result
+
+#     # if [ "$result" == "True" ]; then
+#     #   echo "{{.index.name}} index created!"
+#     # else
+#     #   echo "{{.index.name}} index not created!"
+#     # fi
+# {{- end}}
+# {{- end}}
+
+{{ range .Values.fluentbit.esTemplate.ilms }}
+  ilm-{{ .name }}.json: |- 
+    {{ toJson .json }}
+{{- end }}
+
+{{ range .Values.fluentbit.esTemplate.templates }}
+  template-{{ .name }}.json: |-
+    {{ toJson .json }}
+{{- end }}
+
+{{ range .Values.fluentbit.targetLogs }}
+{{ if .index}}
+  index-{{ .index.name }}.json: |-
+    {
+      "aliases": {
+        "{{.index.aliases}}":{
+          "is_write_index": true
+        }
+{{- if .index.mappings }}
+        , "mappings":{{ toJson .index.mappings }}
+{{- end}}        
+      }
+    }
+{{- end }}
+{{- end }}
 {{- end}}
