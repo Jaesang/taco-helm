@@ -2,6 +2,7 @@
 # Registry, Postgres, Clair, Builder, App
 
 namespace: default
+ingressPort: 30080
 
 storageClassName: taco-sc
 
@@ -23,6 +24,34 @@ tacoRegistry:
         port: 5000
         targetPort: 5000
         nodePort:    
+  ingress1:
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: 10240m
+    host: taco-registry.com
+    paths:
+      - path: /
+        port: 5000
+  ingress2:
+    enabled: false
+    annotations: {}
+    host:
+    paths:
+      - path: /
+        port: 5000
+  ingressPub1:
+    enabled: false
+    annotations: {}
+    host:
+    paths:
+      - path: /
+        port: 5000
+  ingressPub2:
+    enabled: false
+    annotations: {}
+    host:
+    paths:
+      - path: /
+        port: 5000
   volume:
     enabled: false
     data:
@@ -124,3 +153,15 @@ tacoRegistryApp:
         port: 8080
         targetPort: 8080
         nodePort:
+  ingress:
+    host: taco.com
+    paths:
+      - path: /
+        port: 8080
+  ingressPub:
+    enabled: false
+    host:
+    paths:
+      - path: /
+        port: 8080
+
